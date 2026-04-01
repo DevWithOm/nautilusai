@@ -1,10 +1,25 @@
-# 🚨 SECRETS (Never upload these!)
-.env
-
-# Dependencies (These are huge, don't upload them, let the computer download them later)
-node_modules/
+# Python
 __pycache__/
+*.pyc
+*.pyo
+.env
 venv/
+env/
+.venv/
+*.egg-info/
+dist/
+build/
 
-# Mac OS junk files
+# Node
+node_modules/
+dist/
+.env.local
+.env.production
+
+# OS
 .DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

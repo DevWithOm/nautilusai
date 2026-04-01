@@ -68,7 +68,13 @@ app = FastAPI(
 # to make cross-origin requests during development.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",          # local dev
+        "http://localhost:3000",          # local dev alt
+        os.getenv("FRONTEND_URL", "*"),   # production Vercel URL
+        "https://*.vercel.app",           # all Vercel preview URLs
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )

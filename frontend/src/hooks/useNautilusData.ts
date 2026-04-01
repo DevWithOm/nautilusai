@@ -12,7 +12,7 @@ export interface AgentVotes {
   salinity: AgentReading;
 }
 
-import { type Zone, useNautilusStore } from '../store/useNautilusStore';
+import { useNautilusStore } from '../store/useNautilusStore';
 export interface StreamMessage {
   type: 'thinking' | 'voting' | 'complete' | 'coordinator_complete' | 'ping' | 'pong' | 'agent_update';
   agent?: string;
@@ -30,8 +30,8 @@ export interface StreamMessage {
   recommended_action?: string;
 }
 
-const API_URL = import.meta.env.VITE_BACKEND_API_URL || 'http://127.0.0.1:8000/api/v1';
-
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const WS_BASE = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
 
 
 const ALL_ZONES = [
@@ -102,7 +102,7 @@ export function useNautilusData() {
     const initWebSocket = () => {
       if (!mounted) return;
       setWsStatus('connecting');
-      const ws = new WebSocket('ws://127.0.0.1:8000/api/v1/agents/stream');
+      const ws = new WebSocket(`${WS_BASE}/api/v1/agents/stream`);
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -241,7 +241,7 @@ export function useNautilusData() {
 
   const sendFeedback = async (zone_id: string, agent: string, validated: boolean = true) => {
     try {
-      const resp = await fetch(`${API_URL}/feedback`, {
+      const resp = await fetch(`${API_BASE}/api/v1/feedback`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

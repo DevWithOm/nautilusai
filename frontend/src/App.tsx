@@ -25,7 +25,6 @@ function App() {
     wsStatus,
     streamMessages,
     activeDebrief,
-    sendFeedback
   } = useNautilusData();
 
 
@@ -248,7 +247,7 @@ function App() {
             </>
           )}
 
-          {activeTab === 'intelligence' && <ErrorBoundary tabName="Intelligence Feed"><IntelligenceFeedTab activeDebrief={activeDebrief} streamMessages={streamMessages} onValidate={sendFeedback} /></ErrorBoundary>}
+          {activeTab === 'intelligence' && <ErrorBoundary tabName="Intelligence Feed"><IntelligenceFeedTab activeDebrief={activeDebrief} streamMessages={streamMessages} /></ErrorBoundary>}
           {activeTab === 'copilot' && <ErrorBoundary tabName="EcoCopilot"><EcoCopilotTab activeDebrief={activeDebrief} /></ErrorBoundary>}
           {activeTab === 'debrief' && <ErrorBoundary tabName="Mission Debrief"><MissionDebriefTab /></ErrorBoundary>}
           {activeTab === 'health' && <ErrorBoundary tabName="Swarm Health"><SwarmHealthTab streamMessages={streamMessages} /></ErrorBoundary>}

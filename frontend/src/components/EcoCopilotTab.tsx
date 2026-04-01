@@ -14,7 +14,7 @@ interface ChatMsg {
   content: string;
 }
 
-const API_URL = 'http://127.0.0.1:8000/api/v1';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export default function EcoCopilotTab({ activeDebrief }: Props) {
   const summary = useNautilusStore(state => state.coordinatorSummary);
@@ -55,7 +55,7 @@ export default function EcoCopilotTab({ activeDebrief }: Props) {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/chat`, {
+      const response = await fetch(`${API_BASE}/api/v1/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -11,7 +11,7 @@ export default function SwarmHealthTab({ streamMessages }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [displayedLogs, setDisplayedLogs] = useState<StreamMessage[]>([]);
   
-  const agentStates = useNautilusStore(state => state.agentStates);
+
   const zonesProcessed = useNautilusStore(state => state.zonesProcessed);
   const totalZones = useNautilusStore(state => state.totalZones);
   

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { StreamMessage } from '../hooks/useNautilusData';
-import { AlertTriangle, Crosshair, Bot, Check, X, ShieldAlert, Activity } from 'lucide-react';
+import { AlertTriangle, Crosshair, ShieldAlert, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
 import confetti from 'canvas-confetti';
 import { useNautilusStore } from '../store/useNautilusStore';
@@ -9,34 +9,15 @@ import { ErrorBoundary } from './ErrorBoundary';
 import jsPDF from 'jspdf';
 import emailjs from '@emailjs/browser';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 interface Props {
   activeDebrief: StreamMessage | null;
   streamMessages: StreamMessage[];
   onValidate: (zone_id: string, agent: string, validated?: boolean) => Promise<any>;
 }
 
-function TypewriterText({ text, speed = 15, delay = 0 }: { text: string; speed?: number; delay?: number }) {
-  const [displayedText, setDisplayedText] = useState('');
 
-  useEffect(() => {
-    setDisplayedText('');
-    let i = 0;
-    const startDelay = setTimeout(() => {
-      const typeInterval = setInterval(() => {
-        if (i < text.length) {
-          setDisplayedText(text.substring(0, i + 1));
-          i++;
-        } else {
-          clearInterval(typeInterval);
-        }
-      }, speed);
-      return () => clearInterval(typeInterval);
-    }, delay);
-    return () => clearTimeout(startDelay);
-  }, [text, speed, delay]);
-
-  return <span>{displayedText}</span>;
-}
 
 const safeRender = (value: any): string => {
   if (value === null || value === undefined) return 'Awaiting data...';
@@ -173,7 +154,7 @@ const sendEmailAlert = async (user: any, zone: string) => {
   }
 }
 
-export default function IntelligenceFeedTab({ activeDebrief, streamMessages, onValidate }: Props) {
+export default function IntelligenceFeedTab({ activeDebrief, streamMessages }: Omit<Props, 'onValidate'>) {
     const alerts = streamMessages
       .filter(m => m.type === 'coordinator_complete' || m.type === 'complete')
       .reverse();
@@ -223,7 +204,7 @@ export default function IntelligenceFeedTab({ activeDebrief, streamMessages, onV
 
       // Step 1 — Send feedback to backend
       try {
-        await fetch('http://localhost:8000/api/v1/feedback', {
+        await fetch(`${API_BASE}/api/v1/feedback`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -263,7 +244,7 @@ export default function IntelligenceFeedTab({ activeDebrief, streamMessages, onV
 
     const handleFalsePositive = async (zoneId: string) => {
       try {
-        await fetch('http://localhost:8000/api/v1/feedback', {
+        await fetch(`${API_BASE}/api/v1/feedback`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ zone_id: zoneId, verdict: 'false_positive' })
