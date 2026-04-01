@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&display=swap');
+
+@theme {
+  --color-reef-dark: #004B49;
+  --color-reef-deep: #006D77;
+  --color-reef-accent: #83C5BE;
+  --color-reef-coral: #E29578;
+  --color-reef-amber: #FFB703;
+  --color-reef-text: #F8F9FA;
+  --color-reef-glass: rgba(0, 77, 73, 0.75);
+
+  --font-sans: 'Outfit', sans-serif;
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--color-reef-dark);
+  color: var(--color-reef-text);
+  font-family: var(--font-sans);
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* Base scrollbar styling for glass UI */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-reef-accent);
+  border-radius: 3px;
+}
+
+/* Global Animations */
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(226, 149, 120, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(226, 149, 120, 0); }
+  100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(226, 149, 120, 0); }
+}
+
+@keyframes wave {
+  0% { transform: translateX(0) translateZ(0) scaleY(1); }
+  50% { transform: translateX(-25%) translateZ(0) scaleY(0.85); }
+  100% { transform: translateX(-50%) translateZ(0) scaleY(1); }
+}
+
+@keyframes float-up {
+  0% { transform: translateY(100vh) scale(0); opacity: 0; }
+  10% { opacity: 0.8; transform: translateY(80vh) scale(1); }
+  90% { opacity: 0.8; }
+  100% { transform: translateY(-10vh) scale(0); opacity: 0; }
+}
+
+@keyframes toast-slide {
+  from { transform: translateX(110%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes confetti-burst {
+  0% { transform: scale(0); opacity: 1; }
+  to { transform: scale(1.5) translateY(-50px); opacity: 0; }
+}
+
+@keyframes typing {
+  from { width: 0 }
+  to { width: 100% }
+}

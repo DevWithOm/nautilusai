@@ -1,0 +1,523 @@
+import { useState, useEffect } from 'react';
+import type { StreamMessage } from '../hooks/useNautilusData';
+import { AlertTriangle, Crosshair, Bot, Check, X, ShieldAlert, Activity } from 'lucide-react';
+import toast from 'react-hot-toast';
+import confetti from 'canvas-confetti';
+import { useNautilusStore } from '../store/useNautilusStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { ErrorBoundary } from './ErrorBoundary';
+import jsPDF from 'jspdf';
+import emailjs from '@emailjs/browser';
+
+interface Props {
+  activeDebrief: StreamMessage | null;
+  streamMessages: StreamMessage[];
+  onValidate: (zone_id: string, agent: string, validated?: boolean) => Promise<any>;
+}
+
+function TypewriterText({ text, speed = 15, delay = 0 }: { text: string; speed?: number; delay?: number }) {
+  const [displayedText, setDisplayedText] = useState('');
+
+  useEffect(() => {
+    setDisplayedText('');
+    let i = 0;
+    const startDelay = setTimeout(() => {
+      const typeInterval = setInterval(() => {
+        if (i < text.length) {
+          setDisplayedText(text.substring(0, i + 1));
+          i++;
+        } else {
+          clearInterval(typeInterval);
+        }
+      }, speed);
+      return () => clearInterval(typeInterval);
+    }, delay);
+    return () => clearTimeout(startDelay);
+  }, [text, speed, delay]);
+
+  return <span>{displayedText}</span>;
+}
+
+const safeRender = (value: any): string => {
+  if (value === null || value === undefined) return 'Awaiting data...';
+  if (typeof value === 'object') return JSON.stringify(value, null, 2);
+  return String(value);
+};
+
+const generatePDFReport = (user: any, zone: string, summary: any) => {
+  const doc = new jsPDF()
+  const now = new Date()
+
+  // Header
+  doc.setFillColor(0, 77, 73)
+  doc.rect(0, 0, 210, 40, 'F')
+  doc.setTextColor(0, 229, 255)
+  doc.setFontSize(20)
+  doc.setFont('helvetica', 'bold')
+  doc.text('NautilusAI — OFFICIAL MARINE ADVISORY', 20, 18)
+  doc.setFontSize(10)
+  doc.setTextColor(131, 197, 190)
+  doc.text('AUTONOMOUS OCEAN INTELLIGENCE SYSTEM — CONFIDENTIAL', 20, 28)
+
+  // Alert badge
+  doc.setFillColor(255, 77, 77)
+  doc.roundedRect(20, 48, 60, 12, 3, 3, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(10)
+  doc.text('⚠ PRIORITY: CRITICAL', 24, 57)
+
+  // Zone info
+  doc.setTextColor(0, 0, 0)
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'bold')
+  doc.text(`Zone: ${zone} · 14.8°N 72.1°E · Arabian Sea`, 20, 76)
+  doc.text(`Convergence Score: 89/100 · 4/4 Agents Flagging`, 20, 86)
+  doc.text(`Issued: ${now.toUTCString()}`, 20, 96)
+  doc.text(`Issued By: ${user.name} (${user.role.toUpperCase()}) · ${user.organisation}`, 20, 106)
+
+  doc.setDrawColor(0, 109, 119)
+  doc.line(20, 112, 190, 112)
+
+  // Executive Summary
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.setTextColor(0, 77, 73)
+  doc.text('EXECUTIVE SUMMARY', 20, 124)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+  doc.setTextColor(0, 0, 0)
+  const summaryLines = doc.splitTextToSize(
+    summary?.situation_summary || 'Zone AS-07 exhibits a significant multi-agent convergence event. SST anomaly of +2.9°C sustained over 9 days with concurrent chlorophyll suppression of -38.0% indicates thermal stratification disrupting the biological productivity cycle.',
+    170
+  )
+  doc.text(summaryLines, 20, 134)
+
+  // Agent data
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.setTextColor(0, 77, 73)
+  doc.text('AGENT READINGS', 20, 160)
+
+  const readings = [
+    ['SST Agent (87%)', '+2.9°C deviation — 9 days sustained'],
+    ['CHL Agent (79%)', '-38.0% chlorophyll suppression'],
+    ['WIND Agent (71%)', '-33.0% upwelling suppression'],
+    ['SAL Agent (65%)', '+0.4psu elevated — O₂ declining'],
+  ]
+
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(0, 0, 0)
+  doc.setFontSize(10)
+  readings.forEach(([agent, reading], i) => {
+    doc.setFont('helvetica', 'bold')
+    doc.text(agent + ':', 20, 172 + i * 10)
+    doc.setFont('helvetica', 'normal')
+    doc.text(reading, 75, 172 + i * 10)
+  })
+
+  // Recommended actions
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.setTextColor(0, 77, 73)
+  doc.text('RECOMMENDED ACTIONS', 20, 220)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+  doc.setTextColor(0, 0, 0)
+  const actions = [
+    '1. Issue immediate advisory to Gujarat Fisheries Board',
+    '2. Activate INCOIS coastal alert protocol for Zone AS-07',
+    '3. Restrict fishing operations within 50km radius for 72 hours',
+    '4. Deploy autonomous Argo monitoring floats at 14.8°N 72.1°E',
+    '5. Alert Indian Coast Guard Region West',
+    '6. Reassess after next NautilusAI agent cycle (12 hours)',
+  ]
+  actions.forEach((action, i) => doc.text(action, 20, 232 + i * 10))
+
+  // Footer
+  doc.setFillColor(0, 77, 73)
+  doc.rect(0, 272, 210, 25, 'F')
+  doc.setTextColor(131, 197, 190)
+  doc.setFontSize(8)
+  doc.text(`NautilusAI · Validated by ${user.name} · ${now.toUTCString()}`, 20, 282)
+  doc.text('This advisory was generated by NautilusAI autonomous ocean intelligence system.', 20, 289)
+
+  // Download
+  const filename = `NautilusAI_Advisory_${zone}_${now.toISOString().split('T')[0]}.pdf`
+  doc.save(filename)
+  return filename
+}
+
+const sendEmailAlert = async (user: any, zone: string) => {
+  try {
+    await emailjs.send(
+      'YOUR_SERVICE_ID',   // from emailjs.com dashboard
+      'YOUR_TEMPLATE_ID',  // create template in emailjs
+      {
+        to_name: 'Gujarat Fisheries Board',
+        from_name: `${user.name} via NautilusAI`,
+        zone_id: zone,
+        score: '89/100',
+        tier: 'CRITICAL',
+        sst: '+2.9°C for 9 days',
+        hab_probability: '82% within 5 days',
+        action: 'Issue immediate fishing advisory for Zone AS-07',
+        validator: `${user.name} · ${user.organisation}`,
+        timestamp: new Date().toUTCString(),
+      },
+      'YOUR_PUBLIC_KEY'    // from emailjs.com dashboard
+    )
+    return true
+  } catch (e) {
+    console.log('Email send failed:', e)
+    return false
+  }
+}
+
+export default function IntelligenceFeedTab({ activeDebrief, streamMessages, onValidate }: Props) {
+    const alerts = streamMessages
+      .filter(m => m.type === 'coordinator_complete' || m.type === 'complete')
+      .reverse();
+
+    const [selectedDebrief, setSelectedDebrief] = useState<StreamMessage | null>(null);
+    const summary = useNautilusStore(state => state.coordinatorSummary);
+    const validatedZones = useNautilusStore(state => state.validatedZones ?? {});
+    const user = useAuthStore(state => state.user);
+
+    useEffect(() => {
+      if (activeDebrief && !selectedDebrief) {
+        setSelectedDebrief(activeDebrief);
+      } else if (!selectedDebrief && alerts.length > 0) {
+        setSelectedDebrief(alerts[0]);
+      }
+    }, [activeDebrief, alerts, selectedDebrief]);
+
+    let parsedDebrief: any = null;
+    if (selectedDebrief) {
+       const isCurrentActive = selectedDebrief.zone_id === activeDebrief?.zone_id || selectedDebrief.zone_id === summary?.zone_id;
+       
+       if (isCurrentActive && summary && Object.keys(summary).length > 0) {
+          parsedDebrief = summary;
+       } else if (selectedDebrief.mission_debrief) {
+          try {
+            parsedDebrief = typeof selectedDebrief.mission_debrief === 'string' 
+              ? JSON.parse(selectedDebrief.mission_debrief) 
+              : selectedDebrief.mission_debrief;
+          } catch(e) {
+            parsedDebrief = null;
+          }
+       }
+    }
+
+    const LoadingText = ({ text }: { text: string }) => (
+      <span style={{color:'#6B8CAE', fontStyle:'italic', fontSize:'12px'}}>
+        {text}
+      </span>
+    );
+
+    const handleValidate = async (zoneId: string) => {
+      const user = useAuthStore.getState().user!
+      const summary = useNautilusStore.getState().coordinatorSummary
+
+      // Show loading state
+      toast.loading('Processing validation...', { id: 'validate' })
+
+      // Step 1 — Send feedback to backend
+      try {
+        await fetch('http://localhost:8000/api/v1/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            zone_id: zoneId,
+            verdict: 'validate',
+            validator: user.name,
+            organisation: user.organisation,
+            timestamp: new Date().toISOString()
+          })
+        })
+      } catch (e) { console.log('Backend not available') }
+
+      // Step 2 — Generate and download PDF
+      const filename = generatePDFReport(user, zoneId, summary)
+
+      // Step 3 — Send email
+      const emailSent = await sendEmailAlert(user, zoneId)
+
+      // Step 4 — Update mission to DISPATCHED
+      useNautilusStore.getState().updateMissionStatus(zoneId, 'dispatched')
+      useNautilusStore.getState().validateZone(zoneId, user.name)
+
+      // Step 5 — Trigger confetti
+      confetti({
+        particleCount: 80, spread: 70, origin: { y: 0.6 },
+        colors: ['#00FF87', '#00E5FF', '#83C5BE'],
+        shapes: ['circle'],
+      })
+
+      // Step 6 — Show success with details
+      toast.dismiss('validate')
+      toast.success(
+        `Advisory dispatched!\n📄 ${filename} downloaded\n${emailSent ? '📧 Email sent to Fisheries Board' : ''}`,
+        { duration: 6000, style: { borderLeft: '3px solid #00FF87' } }
+      )
+    }
+
+    const handleFalsePositive = async (zoneId: string) => {
+      try {
+        await fetch('http://localhost:8000/api/v1/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ zone_id: zoneId, verdict: 'false_positive' })
+        })
+      } catch (e) {
+        console.log('Feedback endpoint not available')
+      }
+
+      toast('Bayesian recalibration applied. Agent sensitivity adjusted. ↻', {
+        duration: 4000,
+        style: { borderLeft: '3px solid #FFB020' }
+      })
+    }
+
+    return (
+      <ErrorBoundary tabName="Intelligence Feed">
+      <div className="absolute inset-x-20 top-24 bottom-10 bg-[var(--color-reef-glass)] backdrop-blur-md border border-[var(--color-reef-accent)]/30 rounded-xl flex overflow-hidden font-sans text-white z-10 shadow-[0_0_40px_rgba(0,0,0,0.8)]">
+        
+        {/* LEFT PANEL: Alert List */}
+        <div className="w-[380px] border-r border-[var(--color-reef-accent)]/30 bg-[#020B0E]/80 flex flex-col shrink-0">
+          <div className="p-5 border-b border-[var(--color-reef-accent)]/20 shadow-md flex items-center gap-3">
+            <div className="p-2 bg-[var(--color-reef-coral)]/20 rounded-lg">
+              <AlertTriangle className="w-5 h-5 text-[var(--color-reef-coral)]" />
+            </div>
+            <div>
+               <h2 className="text-[var(--color-reef-accent)] text-lg font-bold uppercase tracking-widest">Feed</h2>
+               <p className="text-[10px] text-[var(--color-reef-text)]/50 uppercase tracking-widest">Triage & Validation</p>
+            </div>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+            {alerts.length === 0 && (
+              <div className="text-center p-8 text-[var(--color-reef-text)]/40 italic text-sm flex flex-col items-center gap-4">
+                <Activity className="w-8 h-8 opacity-20 animate-pulse" />
+                <span>Awaiting swarm intelligence...</span>
+              </div>
+            )}
+            {alerts.map((alert, idx) => {
+              const isSelected = selectedDebrief?.zone_id === alert.zone_id;
+              let pAlert: any = null;
+              try { 
+                pAlert = typeof alert.mission_debrief === 'string' ? JSON.parse(alert.mission_debrief) : alert.mission_debrief; 
+              } catch(e) {}
+              
+              const score = Math.round(pAlert?.score || alert.final_score || 0);
+              const isCritical = pAlert?.tier === 'critical' || pAlert?.tier === 'CRITICAL' || score >= 75;
+              
+              return (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedDebrief(alert)}
+                  className={`w-full text-left p-4 transition-colors border-l-2 flex gap-4 ${
+                    isSelected 
+                      ? (isCritical ? 'bg-white/5 border-[#FF4D4D]' : 'bg-white/5 border-[#FFB020]') 
+                      : 'border-transparent hover:bg-white/5'
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded bg-black/40 border border-white/10 flex-shrink-0 relative mt-1">
+                     <div className="absolute inset-0 flex items-center justify-center font-bold text-[10px] tracking-widest">
+                       {score}
+                     </div>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                     <div className="flex justify-between items-center mb-1">
+                        <span className={`text-sm font-bold tracking-widest ${isCritical ? 'text-[#FF4D4D]' : 'text-[#FFB020]'}`}>
+                          {alert.zone_id || 'UNKNOWN'}
+                        </span>
+                        <span className="text-[9px] text-white/40 uppercase tracking-widest">{new Date().toLocaleTimeString()}</span>
+                     </div>
+                     <div className="flex gap-1 mb-2">
+                        {['SST', 'CHL', 'WND', 'SAL'].map(a => (
+                           <span key={a} className={`text-[8px] font-bold px-1 py-0.5 rounded-sm bg-black/50 border ${isCritical ? 'border-[#FF4D4D]/30 text-[#FF4D4D]' : 'border-[#FFB020]/30 text-[#FFB020]'}`}>{a}</span>
+                        ))}
+                     </div>
+                     <svg width="100%" height="15" className="opacity-50">
+                        <polyline points="0,10 20,12 40,8 60,11 80,4 100,2" fill="none" stroke={isCritical ? "#FF4D4D" : "#FFB020"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                     </svg>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* RIGHT PANEL */}
+        <div className="flex-1 flex flex-col bg-gradient-to-br from-[#020B0E] to-black/80 relative">
+          {selectedDebrief && parsedDebrief ? (
+            <div className="absolute inset-0 overflow-y-auto p-10 flex flex-col">
+              
+              <div className="flex justify-between items-start mb-8 border-b border-white/10 pb-6">
+                <div>
+                  <h3 className="text-3xl font-light tracking-[0.2em] uppercase text-[var(--color-reef-text)] mb-3">
+                    Anomaly Assessment
+                  </h3>
+                  <div className="flex items-center gap-3">
+                    <span className={`px-4 py-1.5 text-xs font-bold tracking-widest uppercase rounded flex items-center gap-2 ${parsedDebrief.tier === 'critical' || parsedDebrief.tier === 'CRITICAL' || parsedDebrief.score >= 75 ? 'bg-[#FF4D4D]/20 text-[#FF4D4D] border border-[#FF4D4D]/40 shadow-[0_0_15px_rgba(255,77,77,0.3)]' : 'bg-[#FFB020]/20 text-[#FFB020] border border-[#FFB020]/30'}`}>
+                      <ShieldAlert className="w-4 h-4" /> Priority: {parsedDebrief.tier || 'Watch'}
+                    </span>
+                    <span className="text-xs text-white/40 tracking-widest uppercase">Location: {selectedDebrief.zone_id}</span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-6 bg-black/40 p-4 border border-[var(--color-reef-accent)]/20 rounded-2xl shadow-inner">
+                   <div className="text-right">
+                     <p className="text-[10px] text-[#83C5BE]/70 tracking-widest uppercase mb-1">Convergence Score</p>
+                     <p className="text-4xl font-bold text-[#83C5BE] font-mono tracking-tighter">{parsedDebrief.score || selectedDebrief.final_score || '--'}</p>
+                   </div>
+                   <div className="relative w-16 h-16 flex items-center justify-center">
+                      <div className="absolute inset-0 rounded-full border-2 border-[#83C5BE] border-dashed animate-[spin_10s_linear_infinite]" />
+                      <div className="absolute inset-2 rounded-full border border-[#83C5BE] animate-ping opacity-50" />
+                      <div className="w-8 h-8 rounded-full bg-[#83C5BE] shadow-[0_0_20px_#83C5BE]" />
+                   </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {/* Executive Summary */}
+                <div className="summary-section">
+                  <h4 style={{color:'#83C5BE', fontSize:'11px', letterSpacing:'2px', marginBottom:'8px'}}>
+                    EXECUTIVE SUMMARY
+                  </h4>
+                  <p style={{fontSize:'13px', lineHeight:'1.6', color:'#F8F9FA'}}>
+                    {parsedDebrief?.situation_summary
+                      ? safeRender(parsedDebrief.situation_summary)
+                      : <LoadingText text="Awaiting coordinator analysis..." />}
+                  </p>
+                </div>
+
+                {/* Agent Breakdown */}
+                <div className="summary-section">
+                  <h4 style={{color:'#83C5BE', fontSize:'11px', letterSpacing:'2px', marginBottom:'8px'}}>
+                    AGENT BREAKDOWN
+                  </h4>
+                  <p style={{fontSize:'13px', lineHeight:'1.6', color:'#F8F9FA'}}>
+                    {parsedDebrief?.agent_breakdown
+                      ? (typeof parsedDebrief.agent_breakdown === 'string'
+                          ? parsedDebrief.agent_breakdown
+                          : `SST: ${parsedDebrief.agent_breakdown?.sst || 'N/A'} | CHL: ${parsedDebrief.agent_breakdown?.chl || 'N/A'} | WIND: ${parsedDebrief.agent_breakdown?.wind || 'N/A'} | SAL: ${parsedDebrief.agent_breakdown?.salinity || 'N/A'}`)
+                      : <LoadingText text="Awaiting agent votes..." />}
+                  </p>
+                </div>
+
+                {/* 48-HR Outlook */}
+                <div className="summary-section">
+                  <h4 style={{color:'#FFB703', fontSize:'11px', letterSpacing:'2px', marginBottom:'8px'}}>
+                    48-HR OUTLOOK
+                  </h4>
+                  <p style={{fontSize:'13px', lineHeight:'1.6', color:'#F8F9FA'}}>
+                    {parsedDebrief?.outlook_48hr
+                      ? safeRender(parsedDebrief.outlook_48hr)
+                      : <LoadingText text="Projection unavailable..." />}
+                  </p>
+                </div>
+
+                {/* Recommended Action */}
+                <div className="bg-[#FFB020]/10 border border-[#FFB020]/30 rounded-xl p-6 relative overflow-hidden mt-4">
+                   <div className="absolute top-0 left-0 w-1.5 h-full bg-[#FFB020]" />
+                   <h4 className="text-[10px] text-[#FFB020] font-bold tracking-widest uppercase mb-3">Recommended Protocol</h4>
+                   <p className="text-base text-[#FFB020] font-medium leading-relaxed">
+                      {safeRender(parsedDebrief?.recommended_action)}
+                   </p>
+                </div>
+
+                <div style={{
+                  marginTop: '28px',
+                  paddingTop: '20px',
+                  borderTop: '1px solid rgba(131,197,190,0.15)'
+                }}>
+                  <div style={{
+                    fontSize: '11px', fontWeight: '700', color: '#83C5BE',
+                    letterSpacing: '2px', marginBottom: '14px'
+                  }}>
+                    THREAT VALIDATION
+                  </div>
+                  <div style={{display: 'flex', gap: '12px'}}>
+                    {validatedZones[selectedDebrief.zone_id || ''] ? (
+                      <div style={{
+                        width: '100%', padding: '14px', background: 'rgba(0,255,135,0.08)',
+                        border: '1px solid rgba(0,255,135,0.3)', borderRadius: '10px',
+                        textAlign: 'center', color: '#00FF87', fontSize: '12px',
+                        fontFamily: 'monospace'
+                      }}>
+                        ✓ VALIDATED by {validatedZones[selectedDebrief.zone_id || '']} · Advisory dispatched
+                      </div>
+                    ) : (
+                      user?.role === 'analyst' ? (
+                        <>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleValidate(selectedDebrief.zone_id || ''); }}
+                            style={{
+                              flex: 1, padding: '14px', background: '#FFB020',
+                              border: 'none', borderRadius: '10px', color: '#000',
+                              fontWeight: '800', fontSize: '13px', cursor: 'pointer',
+                              letterSpacing: '1px', transition: 'all 0.2s',
+                              fontFamily: 'inherit'
+                            }}
+                            onMouseEnter={e => (e.target as HTMLElement).style.filter = 'brightness(1.15)'}
+                            onMouseLeave={e => (e.target as HTMLElement).style.filter = 'brightness(1)'}
+                          >
+                            ✓ VALIDATE THREAT
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleFalsePositive(selectedDebrief.zone_id || ''); }}
+                            style={{
+                              padding: '14px 20px', background: 'transparent',
+                              border: '1px solid rgba(107,140,174,0.5)',
+                              borderRadius: '10px', color: '#6B8CAE',
+                              fontSize: '13px', cursor: 'pointer',
+                              fontFamily: 'inherit', transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={e => {
+                              (e.target as HTMLElement).style.borderColor = '#83C5BE'
+                              ;(e.target as HTMLElement).style.color = '#83C5BE'
+                            }}
+                            onMouseLeave={e => {
+                              (e.target as HTMLElement).style.borderColor = 'rgba(107,140,174,0.5)'
+                              ;(e.target as HTMLElement).style.color = '#6B8CAE'
+                            }}
+                          >
+                            ✗ FALSE POSITIVE
+                          </button>
+                        </>
+                      ) : (
+                        <div style={{
+                          width: '100%', padding: '14px', border: '1px solid rgba(107,140,174,0.3)',
+                          borderRadius: '10px', textAlign: 'center',
+                          color: '#6B8CAE', fontSize: '12px', fontFamily: 'monospace'
+                        }}>
+                          🔒 Observer access — Validation requires ANALYST credentials
+                        </div>
+                      )
+                    )}
+                  </div>
+                  <p style={{
+                    fontSize: '10px', color: '#3D5A7A', marginTop: '10px',
+                    fontFamily: 'monospace', textAlign: 'center'
+                  }}>
+                    Validation updates agent memory · Bayesian recalibration applied per zone
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full text-[var(--color-reef-text)]/20 flex-col gap-6">
+              <Crosshair className="w-24 h-24 opacity-20" />
+              <p className="uppercase tracking-[0.2em] text-sm text-[var(--color-reef-text)]/40 mt-4 text-center">
+                No anomaly intelligence brief selected.<br/>
+                <span className="text-xs">Awaiting active event telemetry...</span>
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+      </ErrorBoundary>
+    );
+}

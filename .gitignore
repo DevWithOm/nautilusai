@@ -1,0 +1,10 @@
+# 🚨 SECRETS (Never upload these!)
+.env
+
+# Dependencies (These are huge, don't upload them, let the computer download them later)
+node_modules/
+__pycache__/
+venv/
+
+# Mac OS junk files
+.DS_Store
