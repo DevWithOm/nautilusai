@@ -71,9 +71,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",          # local dev
         "http://localhost:3000",          # local dev alt
-        os.getenv("FRONTEND_URL", "*"),   # production Vercel URL
-        "https://*.vercel.app",           # all Vercel preview URLs
+        os.getenv("FRONTEND_URL", "http://localhost:5173"),   # fallback to dev origin
     ],
+    allow_origin_regex=os.getenv("FRONTEND_REGEX", r"https://.*\.vercel\.app"), # regex for Vercel preview URLs
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

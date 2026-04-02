@@ -14,7 +14,8 @@ interface ChatMsg {
   content: string;
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+const API_BASE = useNautilusStore.getState().apiBase;
 
 export default function EcoCopilotTab({ activeDebrief }: Props) {
   const summary = useNautilusStore(state => state.coordinatorSummary);

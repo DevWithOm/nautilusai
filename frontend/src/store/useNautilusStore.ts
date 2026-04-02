@@ -56,6 +56,8 @@ interface NautilusStore {
   updateMissionStatus: (zoneId: string, status: 'pending' | 'dispatched') => void;
   validatedZones: Record<string, string>;
   validateZone: (zoneId: string, validatorName: string) => void;
+  apiBase: string;
+  wsBase: string;
 }
 
 export const useNautilusStore = create<NautilusStore>((set) => ({
@@ -67,6 +69,8 @@ export const useNautilusStore = create<NautilusStore>((set) => ({
   zonesProcessed: 0,
   totalZones: 25,
   validatedZones: {},
+  apiBase: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+  wsBase: import.meta.env.VITE_WS_URL || 'ws://localhost:8000',
   validateZone: (zoneId: string, validatorName: string) =>
     set(state => ({
       validatedZones: { ...state.validatedZones, [zoneId]: validatorName }

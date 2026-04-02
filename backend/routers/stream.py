@@ -62,10 +62,10 @@ async def agent_stream(websocket: WebSocket):
         initial_state = {
             "zone_id":          "AS-07",
             "cloud_cover_days": 0,
-            "sst_result":      {},
-            "chl_result":      {},
-            "wind_result":     {},
-            "salinity_result": {},
+            "sst_result":      {"confidence": 0, "reading": "Pending"},
+            "chl_result":      {"confidence": 0, "reading": "Pending"},
+            "wind_result":     {"confidence": 0, "reading": "Pending"},
+            "salinity_result": {"confidence": 0, "reading": "Pending"},
             "final_score":     0,
             "mission_debrief": "",
         }
@@ -135,10 +135,10 @@ async def agent_stream(websocket: WebSocket):
             # Spread the debrief fields at top level too for compatibility
             "score":           f_score,
             "tier":            f_tier,
-            "situation_summary": debrief_data.get("situation_summary", ""),
-            "agent_breakdown":   debrief_data.get("agent_breakdown", ""),
-            "outlook_48hr":      debrief_data.get("outlook_48hr", ""),
-            "recommended_action": debrief_data.get("recommended_action", ""),
+            "situation_summary": debrief_data.get("situation_summary", "Anomaly situation analysis in progress."),
+            "agent_breakdown":   debrief_data.get("agent_breakdown", "Gathering specialist agent insights..."),
+            "outlook_48hr":      debrief_data.get("outlook_48hr", "Projecting trend trajectory..."),
+            "recommended_action": debrief_data.get("recommended_action", "Maintain standard monitoring protocols."),
         })
         
         # --- WebSocket Heartbeat loop ---
