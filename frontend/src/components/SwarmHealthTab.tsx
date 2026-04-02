@@ -193,7 +193,7 @@ export default function SwarmHealthTab({ streamMessages }: Props) {
             .slice(-20)
             .map((msg, i, arr) => {
             let typeColor = "text-[#83C5BE]";
-            let textColor = "text-white/80";
+            const textColor = "text-white/80";
             
             if (msg.type === 'thinking') {
               typeColor = "text-[#FFB703]"; // amber

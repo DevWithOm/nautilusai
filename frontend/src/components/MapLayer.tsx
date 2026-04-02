@@ -18,7 +18,9 @@ const INITIAL_VIEW_STATE = {
 
 export default function MapLayer({ zones, onZoneClick }: MapLayerProps) {
   const STADIA_API_KEY = import.meta.env.VITE_STADIA_API_KEY || ''; 
-  const MAP_STYLE = `https://tiles.stadiamaps.com/styles/alidade_smooth_dark.json?api_key=${STADIA_API_KEY}`;
+  const MAP_STYLE = STADIA_API_KEY 
+    ? `https://tiles.stadiamaps.com/styles/alidade_smooth_dark.json?api_key=${STADIA_API_KEY}`
+    : 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [hasFlown, setHasFlown] = useState(false);
@@ -81,9 +83,9 @@ export default function MapLayer({ zones, onZoneClick }: MapLayerProps) {
           let sizeClass = 'w-2.5 h-2.5'; // radius 5 (10px)
           let opacityClass = 'opacity-30';
           
-          const t = String(zone.tier).toLowerCase();
+          const t = String(zone.tier || 'normal').toLowerCase();
           
-          if (t === 'critical') {
+          if (t === 'critical' || t === 'warning') {
             ringColor = 'bg-[#FF4D4D] shadow-[0_0_15px_#FF4D4D]';
             textColor = 'text-[#FF4D4D]';
             sizeClass = 'w-7 h-7'; // radius 14 (28px)

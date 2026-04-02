@@ -9,7 +9,8 @@ import { ErrorBoundary } from './ErrorBoundary';
 import jsPDF from 'jspdf';
 import emailjs from '@emailjs/browser';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+const API_BASE = useNautilusStore.getState().apiBase;
 
 interface Props {
   activeDebrief: StreamMessage | null;
